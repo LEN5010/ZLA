@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         知行实验室答题 by LEN5010
 // @namespace    http://tampermonkey.net/
-// @version      2.1
+// @version      2.2
 // @description  一键秒杀 mhlabs.cloudrange.cn 上的幻灯片与考试题目
 // @author       LEN5010
 // @match        *://mhlabs.cloudrange.cn/*
@@ -142,7 +142,7 @@
                 <div id="cr-header">${CONFIG.title}</div>
                 <button id="btn-slides" class="cr-btn">解决幻灯片</button>
                 <button id="btn-exam" class="cr-btn">解决考试题</button>
-                <div id="cr-status">何意味</div>
+                <div id="cr-status">喜欢的话给我点个star吧:github.com/LEN5010/ZLA</div>
             </div>
         `;
         document.body.appendChild(div);
