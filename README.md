@@ -1,8 +1,5 @@
 # 知行实验室答题助手 (Zhixing Laboratory Assistant)
 
-如果喜欢的话,给我的github点个关注和star吧
-https://github.com/LEN5010
-
 ## 简介
 
 本脚本专为知行实验室 (mhlabs.cloudrange.cn) 平台设计，旨在辅助用户高效完成在线培训任务。脚本集成了自动化处理模块，能够识别并处理 Articulate 幻灯片课件与 Vue 架构的考试系统，大幅提升学习效率。
