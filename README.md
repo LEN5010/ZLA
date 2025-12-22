@@ -4,6 +4,8 @@
 
 本脚本专为知行实验室 (mhlabs.cloudrange.cn) 平台设计，旨在辅助用户高效完成在线培训任务。脚本集成了自动化处理模块，能够识别并处理 Articulate 幻灯片课件与 Vue 架构的考试系统，大幅提升学习效率。
 
+快速使用方法:https://greasyfork.org/zh-CN/scripts/559768-%E7%9F%A5%E8%A1%8C%E5%AE%9E%E9%AA%8C%E5%AE%A4%E7%AD%94%E9%A2%98%E5%8A%A9%E6%89%8B
+
 ## 主要功能
 
 ### 1. 幻灯片自动化处理
