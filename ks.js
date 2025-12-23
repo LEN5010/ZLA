@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         知行实验室答题 by LEN5010
+// @name         知行实验室答题助手
 // @namespace    http://tampermonkey.net/
-// @version      2.2
+// @version      2.2.2
 // @description  一键秒杀 mhlabs.cloudrange.cn 上的幻灯片与考试题目
 // @author       LEN5010
 // @match        *://mhlabs.cloudrange.cn/*
@@ -13,9 +13,8 @@
 (function() {
     'use strict';
 
-    //Config: 在这里替换你的背景图片链接
     const CONFIG = {
-        bgImage: '',
+        bgImage: 'len5010.github.io/img/fll2.jpg',
         title: '知行实验室答题助手'
     };
 
@@ -24,7 +23,6 @@
         initUI();
     }
 
-    // --- 核心逻辑保持不变 ---
     window.addEventListener('message', function(event) {
         if (event.data && event.data.action === 'CR_HACK_SLIDES') {
             console.log("[Frame] 收到幻灯片破解指令...");
@@ -36,42 +34,34 @@
         }
     });
 
-    // --- UI 与 样式部分 ---
     function initCustomStyle() {
         const css = `
-            /* 主面板 - 极简硬朗风格 */
             #cr-hack-panel {
                 position: fixed;
                 top: 100px;
                 right: 100px;
                 width: 240px;
                 z-index: 999999;
-                background-color: #0d0000; /* 极深红黑底 */
-                /* 背景图设置 */
+                background-color: #0d0000;
                 background-image: ${CONFIG.bgImage ? `url("${CONFIG.bgImage}")` : 'none'};
                 background-size: cover;
                 background-position: center;
-                /* 边框改为暗红色 */
                 border: 1px solid #4a0000;
                 border-radius: 0; 
                 box-shadow: 0 5px 15px rgba(0,0,0,0.6);
                 font-family: "Microsoft YaHei", sans-serif;
-                height: auto; /* 自适应高度 */
+                height: auto;
             }
-
-            /* 遮罩层 - 保持通透 */
             #cr-panel-overlay {
                 background: rgba(0, 0, 0, 0.3); 
                 padding: 10px;
                 display: flex;
                 flex-direction: column;
             }
-
-            /* 拖拽标题栏 */
             #cr-header {
                 margin: -10px -10px 12px -10px;
                 padding: 8px;
-                background: rgba(40, 0, 0, 0.8); /* 深红半透明 */
+                background: rgba(40, 0, 0, 0.8);
                 color: #cc9999;
                 font-size: 13px;
                 font-weight: bold;
@@ -81,48 +71,37 @@
                 user-select: none;
                 letter-spacing: 1px;
             }
-
-            /* 按钮通用样式 - 暗红、直角、居中 */
             .cr-btn {
                 display: block;
-                width: 130px; /* 小巧固定宽度 */
-                margin: 0 auto 8px auto; /* 居中 */
+                width: 130px;
+                margin: 0 auto 8px auto;
                 padding: 7px 0;
-                border: 1px solid #5c0000; /* 暗红边框 */
-                border-radius: 0; /* 直角 */
-                
-                /* 统一暗红色背景 */
+                border: 1px solid #5c0000;
+                border-radius: 0;
                 background: rgba(60, 10, 10, 0.85); 
-                color: #dcb4b4; /* 浅肉色文字 */
-                
+                color: #dcb4b4;
                 font-size: 12px;
                 cursor: pointer;
                 transition: all 0.2s ease;
                 text-align: center;
                 backdrop-filter: blur(2px);
             }
-
-            /* 按钮悬停效果 */
             .cr-btn:hover {
-                background: rgba(100, 20, 20, 0.95); /* 变亮一点 */
+                background: rgba(100, 20, 20, 0.95);
                 border-color: #8a0a0a;
                 color: #fff;
             }
-
-            /* 状态文字 */
             #cr-status {
                 margin-top: 4px;
                 font-size: 11px;
                 color: rgba(255, 200, 200, 0.5);
                 text-align: center;
             }
-            
             .status-active {
                 color: #ff3333 !important;
             }
         `;
 
-        // 注入样式
         if (typeof GM_addStyle !== 'undefined') {
             GM_addStyle(css);
         } else {
@@ -131,8 +110,6 @@
             document.head.appendChild(style);
         }
     }
-
-
 
     function initUI() {
         const div = document.createElement('div');
@@ -147,7 +124,6 @@
         `;
         document.body.appendChild(div);
 
-        // --- 拖拽逻辑 ---
         const header = document.getElementById('cr-header');
         const panel = document.getElementById('cr-hack-panel');
         let isDragging = false;
@@ -157,12 +133,10 @@
             isDragging = true;
             startX = e.clientX;
             startY = e.clientY;
-            // 获取当前计算后的位置，处理 right/top 转换为 left/top
             const rect = panel.getBoundingClientRect();
             initialLeft = rect.left;
             initialTop = rect.top;
             
-            // 切换定位方式，防止拖拽抖动
             panel.style.right = 'auto';
             panel.style.left = initialLeft + 'px';
             panel.style.top = initialTop + 'px';
@@ -184,7 +158,6 @@
             header.style.cursor = 'move';
         });
 
-        // --- 按钮事件绑定 ---
         document.getElementById('btn-slides').onclick = () => {
             updateStatus("正在广播幻灯片指令...", true);
             broadcastMessage('CR_HACK_SLIDES');
@@ -305,10 +278,15 @@
             return traverse(root.__vue__);
         }
 
-        var target = findComponent();
-        if (!target) return;
+        const sleep = (min, max) => new Promise(r => setTimeout(r, Math.floor(Math.random() * (max - min + 1) + min)));
 
-        updateStatus("正在计算答案...", true);
+        var target = findComponent();
+        if (!target) {
+            alert("未找到考试组件，请确保进入了答题页面！");
+            return;
+        }
+
+        updateStatus("正在分析题目数据...", true);
         var details = target.answerRecord.details;
         var trainRecordId = target.trainRecordId;
 
@@ -328,14 +306,19 @@
             let item = details[i];
             if (item.answerFlag === '0') continue;
 
+            updateStatus(`正在破解第 ${i+1}/${details.length} 题...`, true);
             let qType = item.question.choiceType;
 
             if (qType === "2") {
                 if (item.answerFlag !== '0') {
                     item.answerOptionIds = "1";
-                    try { await target.submitQuestion(item, false); target.typeover = false; } catch(e) {}
-                    await new Promise(r => setTimeout(r, 500));
+                    try { 
+                        await target.submitQuestion(item, false); 
+                        target.typeover = false; 
+                    } catch(e) {}
+                    await sleep(500, 800);
                 }
+
                 let realAnswer = null;
                 try {
                     let res = await target.$api.train.act.getQuestionPaper({ trainRecordId: trainRecordId });
@@ -349,12 +332,17 @@
 
                 if (realAnswer) {
                     item.answerOptionIds = realAnswer;
-                    try { await target.submitQuestion(item, false); target.typeover = false; } catch(e) {}
+                    try { 
+                        await target.submitQuestion(item, false); 
+                        target.typeover = false; 
+                    } catch(e) {}
+                    await sleep(300, 500);
                 }
                 continue;
             }
 
             if (!item.options || item.options.length === 0) continue;
+
             let combinations = [];
             if (qType === "1") {
                 let combos = getCombinations(item.options);
@@ -365,15 +353,29 @@
 
             for (let attempt of combinations) {
                 item.answerOptionIds = attempt.ids;
-                try { await target.submitQuestion(item, false); target.typeover = false; } catch (e) {}
-                await new Promise(r => setTimeout(r, 100));
+                try { 
+                    await target.submitQuestion(item, false); 
+                    target.typeover = false; 
+                } catch (e) {
+                    await sleep(500, 1000);
+                }
+                
+                await sleep(200, 400); 
+
                 if (item.answerFlag === '0') break;
             }
+            await sleep(100, 200);
         }
 
-        target.calculateTypeover();
+        try { target.calculateTypeover(); } catch(e){}
         updateStatus("考试破解完成", true);
-        alert("考试题目破解完成！");
+        
+        let leftCount = details.filter(d => d.answerFlag !== '0').length;
+        if (leftCount > 0) {
+            alert(`破解完成，但仍有 ${leftCount} 道题未正确，请再次点击按钮补漏。`);
+        } else {
+            alert("所有题目破解完成！");
+        }
     }
 
 })();
