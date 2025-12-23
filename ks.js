@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         知行实验室答题助手
 // @namespace    http://tampermonkey.net/
-// @version      2.2.2
+// @version      2.5.0
 // @description  一键秒杀 mhlabs.cloudrange.cn 上的幻灯片与考试题目
 // @author       LEN5010
 // @match        *://mhlabs.cloudrange.cn/*
@@ -23,244 +23,33 @@
         initUI();
     }
 
+    // 所有窗口（包括iframe）都监听消息
     window.addEventListener('message', function(event) {
+        // 收到幻灯片破解指令
         if (event.data && event.data.action === 'CR_HACK_SLIDES') {
-            console.log("[Frame] 收到幻灯片破解指令...");
             runSlideSolver();
         }
+        // 收到考试破解指令
         if (event.data && event.data.action === 'CR_HACK_EXAM') {
-            console.log("[Frame] 收到考试破解指令...");
             runExamSolver();
         }
     });
 
-    function initCustomStyle() {
-        const css = `
-            #cr-hack-panel {
-                position: fixed;
-                top: 100px;
-                right: 100px;
-                width: 240px;
-                z-index: 999999;
-                background-color: #0d0000;
-                background-image: ${CONFIG.bgImage ? `url("${CONFIG.bgImage}")` : 'none'};
-                background-size: cover;
-                background-position: center;
-                border: 1px solid #4a0000;
-                border-radius: 0; 
-                box-shadow: 0 5px 15px rgba(0,0,0,0.6);
-                font-family: "Microsoft YaHei", sans-serif;
-                height: auto;
-            }
-            #cr-panel-overlay {
-                background: rgba(0, 0, 0, 0.3); 
-                padding: 10px;
-                display: flex;
-                flex-direction: column;
-            }
-            #cr-header {
-                margin: -10px -10px 12px -10px;
-                padding: 8px;
-                background: rgba(40, 0, 0, 0.8);
-                color: #cc9999;
-                font-size: 13px;
-                font-weight: bold;
-                text-align: center;
-                cursor: move;
-                border-bottom: 1px solid #5c0000;
-                user-select: none;
-                letter-spacing: 1px;
-            }
-            .cr-btn {
-                display: block;
-                width: 130px;
-                margin: 0 auto 8px auto;
-                padding: 7px 0;
-                border: 1px solid #5c0000;
-                border-radius: 0;
-                background: rgba(60, 10, 10, 0.85); 
-                color: #dcb4b4;
-                font-size: 12px;
-                cursor: pointer;
-                transition: all 0.2s ease;
-                text-align: center;
-                backdrop-filter: blur(2px);
-            }
-            .cr-btn:hover {
-                background: rgba(100, 20, 20, 0.95);
-                border-color: #8a0a0a;
-                color: #fff;
-            }
-            #cr-status {
-                margin-top: 4px;
-                font-size: 11px;
-                color: rgba(255, 200, 200, 0.5);
-                text-align: center;
-            }
-            .status-active {
-                color: #ff3333 !important;
-            }
-        `;
-
-        if (typeof GM_addStyle !== 'undefined') {
-            GM_addStyle(css);
-        } else {
-            const style = document.createElement('style');
-            style.textContent = css;
-            document.head.appendChild(style);
-        }
-    }
-
-    function initUI() {
-        const div = document.createElement('div');
-        div.id = 'cr-hack-panel';
-        div.innerHTML = `
-            <div id="cr-panel-overlay">
-                <div id="cr-header">${CONFIG.title}</div>
-                <button id="btn-slides" class="cr-btn">解决幻灯片</button>
-                <button id="btn-exam" class="cr-btn">解决考试题</button>
-                <div id="cr-status">喜欢的话给我点个star吧:github.com/LEN5010/ZLA</div>
-            </div>
-        `;
-        document.body.appendChild(div);
-
-        const header = document.getElementById('cr-header');
-        const panel = document.getElementById('cr-hack-panel');
-        let isDragging = false;
-        let startX, startY, initialLeft, initialTop;
-
-        header.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            const rect = panel.getBoundingClientRect();
-            initialLeft = rect.left;
-            initialTop = rect.top;
-            
-            panel.style.right = 'auto';
-            panel.style.left = initialLeft + 'px';
-            panel.style.top = initialTop + 'px';
-            
-            header.style.cursor = 'grabbing';
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            e.preventDefault();
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
-            panel.style.left = `${initialLeft + dx}px`;
-            panel.style.top = `${initialTop + dy}px`;
-        });
-
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-            header.style.cursor = 'move';
-        });
-
-        document.getElementById('btn-slides').onclick = () => {
-            updateStatus("正在广播幻灯片指令...", true);
-            broadcastMessage('CR_HACK_SLIDES');
-            runSlideSolver();
-        };
-
-        document.getElementById('btn-exam').onclick = () => {
-            updateStatus("正在运行考试破解...", true);
-            broadcastMessage('CR_HACK_EXAM');
-            runExamSolver();
-        };
-    }
-
-    function updateStatus(text, active = false) {
-        const el = document.getElementById('cr-status');
-        if (el) {
-            el.innerText = text;
-            if (active) el.classList.add('status-active');
-            else el.classList.remove('status-active');
-        }
-    }
-
-    function broadcastMessage(action) {
-        const frames = document.getElementsByTagName('iframe');
-        for (let i = 0; i < frames.length; i++) {
-            try {
-                frames[i].contentWindow.postMessage({ action: action }, '*');
-            } catch (e) {}
-        }
-    }
-
-    async function runSlideSolver() {
-        console.log("[Slide] 开始搜索...");
+    function runSlideSolver() {
+        // 这里的 window 指的是 iframe (story.html)
+        // parent 指的是父页面 (mhlabs.cloudrange.cn)
+        console.log("[Slide] 正在尝试调用 parent.viewEnd()...");
         
-        function isStoryData(obj) {
-            if (!obj || typeof obj !== 'object') return false;
-            if (!Array.isArray(obj.scenes) || obj.scenes.length === 0) return false;
-            let firstScene = obj.scenes[0];
-            if (!firstScene || !Array.isArray(firstScene.slides)) return false;
-            return !!(firstScene.id && firstScene.slides[0].id);
+        try {
+            if (parent && typeof parent.viewEnd === 'function') {
+                parent.viewEnd();
+                console.log("[Slide] 调用成功！");
+                // 只有确实调用成功了才提示，避免每个iframe都弹窗
+                alert("已执行结束指令(parent.viewEnd)，请检查状态。");
+            } 
+        } catch (e) {
+            console.error("[Slide] 调用出错:", e);
         }
-
-        let targetData = null;
-        const blacklist = ['window', 'document', 'top', 'parent', 'frames', 'self', 'location', 'history', 'navigator'];
-
-        for (let key in window) {
-            if (blacklist.includes(key)) continue;
-            try { if (isStoryData(window[key])) { targetData = window[key]; break; } } catch (e) {}
-        }
-
-        if (!targetData) {
-            let namespaces = ['story', 'DS', 'public_story', 'player', 'g_oContentResults'];
-            for (let ns of namespaces) {
-                if (window[ns]) {
-                    if (isStoryData(window[ns])) { targetData = window[ns]; break; }
-                    for (let key in window[ns]) {
-                        try { if (isStoryData(window[ns][key])) { targetData = window[ns][key]; break; } } catch(e){}
-                    }
-                }
-                if (targetData) break;
-            }
-        }
-
-        if (!targetData) {
-            if (typeof window.Script1 === 'function') {
-                try { window.Script1(); updateStatus("已尝试直接结束(Script1)"); } catch(e) {}
-            }
-            return;
-        }
-
-        updateStatus("找到数据，开始秒刷...", true);
-        var allIds = [];
-        targetData.scenes.forEach(scene => {
-            scene.slides.forEach(slide => {
-                allIds.push(scene.id + "." + slide.id);
-            });
-        });
-
-        function getCookie(name) {
-            var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-            if (match) return unescape(match[2]);
-            return "";
-        }
-        var token = getCookie('XSRF-TOKEN');
-
-        for (let i = 0; i < allIds.length; i++) {
-            let id = allIds[i];
-            let xhr = new XMLHttpRequest();
-            xhr.open("POST", "callback/viewPage", true);
-            if (token) xhr.setRequestHeader('X-XSRF-TOKEN', token);
-            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            xhr.send("pageId=" + id);
-            await new Promise(r => setTimeout(r, 20));
-        }
-
-        var xhrEnd = new XMLHttpRequest();
-        xhrEnd.open("POST", "callback/viewEnd", true);
-        if (token) xhrEnd.setRequestHeader('X-XSRF-TOKEN', token);
-        xhrEnd.send("");
-
-        try { if(window.Script1) window.Script1(); } catch(e){}
-        updateStatus("幻灯片完成!", true);
-        alert(`幻灯片破解完成！共 ${allIds.length} 页。`);
     }
 
     async function runExamSolver() {
@@ -282,7 +71,10 @@
 
         var target = findComponent();
         if (!target) {
-            alert("未找到考试组件，请确保进入了答题页面！");
+            // 只有在非幻灯片页面才提示找不到组件
+            if (document.querySelector('.question-content') || document.querySelector('.exam-page')) {
+                 alert("未找到考试组件，请确保进入了答题页面！");
+            }
             return;
         }
 
@@ -374,8 +166,162 @@
         if (leftCount > 0) {
             alert(`破解完成，但仍有 ${leftCount} 道题未正确，请再次点击按钮补漏。`);
         } else {
-            alert("所有题目破解完成！");
+            alert("所有题目破解完成！")
         }
+    }
+
+    function initCustomStyle() {
+        const css = `
+            #cr-hack-panel {
+                position: fixed;
+                top: 100px;
+                right: 100px;
+                width: 240px;
+                z-index: 999999;
+                background-color: #0d0000;
+                background-image: ${CONFIG.bgImage ? `url("${CONFIG.bgImage}")` : 'none'};
+                background-size: cover;
+                background-position: center;
+                border: 1px solid #4a0000;
+                border-radius: 0; 
+                box-shadow: 0 5px 15px rgba(0,0,0,0.6);
+                font-family: "Microsoft YaHei", sans-serif;
+                height: auto;
+            }
+            #cr-panel-overlay {
+                background: rgba(0, 0, 0, 0.3); 
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+            }
+            #cr-header {
+                margin: -10px -10px 12px -10px;
+                padding: 8px;
+                background: rgba(40, 0, 0, 0.8);
+                color: #cc9999;
+                font-size: 13px;
+                font-weight: bold;
+                text-align: center;
+                cursor: move;
+                border-bottom: 1px solid #5c0000;
+                user-select: none;
+                letter-spacing: 1px;
+            }
+            .cr-btn {
+                display: block;
+                width: 130px;
+                margin: 0 auto 8px auto;
+                padding: 7px 0;
+                border: 1px solid #5c0000;
+                border-radius: 0;
+                background: rgba(60, 10, 10, 0.85); 
+                color: #dcb4b4;
+                font-size: 12px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                text-align: center;
+                backdrop-filter: blur(2px);
+            }
+            .cr-btn:hover {
+                background: rgba(100, 20, 20, 0.95);
+                border-color: #8a0a0a;
+                color: #fff;
+            }
+            #cr-status {
+                margin-top: 4px;
+                font-size: 11px;
+                color: rgba(255, 200, 200, 0.5);
+                text-align: center;
+            }
+            .status-active {
+                color: #ff3333 !important;
+            }
+        `;
+
+        if (typeof GM_addStyle !== 'undefined') {
+            GM_addStyle(css);
+        } else {
+            const style = document.createElement('style');
+            style.textContent = css;
+            document.head.appendChild(style);
+        }
+    }
+
+    function initUI() {
+        const div = document.createElement('div');
+        div.id = 'cr-hack-panel';
+        div.innerHTML = `
+            <div id="cr-panel-overlay">
+                <div id="cr-header">${CONFIG.title}</div>
+                <button id="btn-slides" class="cr-btn">秒杀幻灯片</button>
+                <button id="btn-exam" class="cr-btn">解决考试题</button>
+                <div id="cr-status">喜欢的话给我点个star吧:github.com/LEN5010/ZLA</div>
+            </div>
+        `;
+        document.body.appendChild(div);
+
+        const header = document.getElementById('cr-header');
+        const panel = document.getElementById('cr-hack-panel');
+        let isDragging = false;
+        let startX, startY, initialLeft, initialTop;
+
+        header.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            const rect = panel.getBoundingClientRect();
+            initialLeft = rect.left;
+            initialTop = rect.top;
+            
+            panel.style.right = 'auto';
+            panel.style.left = initialLeft + 'px';
+            panel.style.top = initialTop + 'px';
+            
+            header.style.cursor = 'grabbing';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            panel.style.left = `${initialLeft + dx}px`;
+            panel.style.top = `${initialTop + dy}px`;
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            header.style.cursor = 'move';
+        });
+
+        document.getElementById('btn-slides').onclick = () => {
+            updateStatus("正在广播幻灯片指令...", true);
+            broadcastMessage('CR_HACK_SLIDES');
+        };
+
+        document.getElementById('btn-exam').onclick = () => {
+            updateStatus("正在运行考试破解...", true);
+            broadcastMessage('CR_HACK_EXAM');
+        };
+    }
+
+    function updateStatus(text, active = false) {
+        const el = document.getElementById('cr-status');
+        if (el) {
+            el.innerText = text;
+            if (active) el.classList.add('status-active');
+            else el.classList.remove('status-active');
+        }
+    }
+
+    function broadcastMessage(action) {
+        const frames = document.getElementsByTagName('iframe');
+        for (let i = 0; i < frames.length; i++) {
+            try {
+                frames[i].contentWindow.postMessage({ action: action }, '*');
+            } catch (e) {}
+        }
+        window.postMessage({ action: action }, '*');
     }
 
 })();
